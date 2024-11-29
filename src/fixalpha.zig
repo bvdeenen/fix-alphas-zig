@@ -5,7 +5,7 @@ const c = @cImport({
     @cInclude("stdio.h");
 });
 
-pub fn main() !void {
+pub fn main() !u8 {
     const stdout = std.io.getStdOut().writer();
     var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
     defer std.debug.assert(general_purpose_allocator.deinit() == .ok);
@@ -30,6 +30,10 @@ pub fn main() !void {
         @panic("");
     }
     var ihdr = try get_image_header(ctx);
+    if (ihdr.bit_depth != 8) {
+        std.debug.print("Only processing RGBA8, and not {}\n", .{ihdr.color_type});
+        return 0;
+    }
     const output_size = try calc_output_size(ctx);
     var buffer = try gpa.alloc(u8, output_size);
     defer _ = gpa.free(buffer);
@@ -38,17 +42,19 @@ pub fn main() !void {
     try stdout.print("Read {} bytes\n", .{output_size});
     try apply_image_filter(buffer[0..]);
     try save_png(&ihdr, buffer[0..]);
+    return 0;
 }
 
 fn apply_image_filter(buffer: []u8) !void {
     const len = buffer.len;
     var index: u64 = 0;
-    while (index < (len - 4)) : (index += 4) {
+    while (index < len) : (index += 4) {
         const alpha = buffer[index + 3];
         // rgbA
         buffer[index + 3] = if (alpha < 0x80) 0 else 0xff;
     }
 }
+
 fn save_png(image_header: *spng.spng_ihdr, buffer: []u8) !void {
     const path = "p2.png";
     const file_descriptor = c.fopen(path.ptr, "wb");
@@ -76,12 +82,12 @@ fn read_data_to_buffer(ctx: *spng.spng_ctx, buffer: []u8) !void {
         return error.CouldNotDecodeImage;
     }
 }
+
 fn get_image_header(ctx: *spng.spng_ctx) !spng.spng_ihdr {
     var image_header: spng.spng_ihdr = undefined;
     if (spng.spng_get_ihdr(ctx, &image_header) != 0) {
         return error.CouldNotGetImageHeader;
     }
-
     return image_header;
 }
 
