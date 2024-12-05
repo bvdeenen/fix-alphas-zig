@@ -54,7 +54,7 @@ pub fn main() !u8 {
 }
 
 fn apply_image_filter(buffer: []u8) !void {
-    std.debug.print("Tresholding alpha.\n");
+    std.debug.print("Tresholding alpha.\n", .{});
     var index: u64 = 0;
     while (index < buffer.len) : (index += 4) {
         const alpha = buffer[index + 3];
