@@ -1,5 +1,6 @@
 const spng = @cImport(@cInclude("spng.h"));
 const std = @import("std");
+const clap = @import("clap");
 const c = @cImport({
     @cDefine("_NO_CRT_STDIO_INLINE", "1");
     @cInclude("stdio.h");
@@ -11,13 +12,27 @@ pub fn main() !u8 {
     const gpa = general_purpose_allocator.allocator();
     const args = try std.process.argsAlloc(gpa);
     defer _ = std.process.argsFree(gpa, args);
-    if (std.os.argv.len != 3) {
-        std.debug.print("Use {s} <input.png> <output.png>\n", .{args[0]});
-        return 1;
-    }
 
-    const in_file = args[1];
-    const out_file = args[2];
+    const params = comptime clap.parseParamsComptime(
+        \\ -h, --help             help
+        \\ -o, --out <str>        output file
+        \\ <str>                  input file
+    );
+
+    var diag = clap.Diagnostic{};
+    var res = clap.parse(clap.Help, &params, clap.parsers.default, .{
+        .diagnostic = &diag,
+        .allocator = gpa,
+    }) catch |err| {
+        diag.report(std.io.getStdErr().writer(), err) catch {};
+        return err;
+    };
+    defer res.deinit();
+    if (res.args.help != 0)
+        std.debug.print("--help\n", .{});
+
+    const out_file = res.args.out.?;
+    const in_file = res.positionals[0];
 
     const ctx = spng.spng_ctx_new(0) orelse unreachable;
     const file = c.fopen(in_file.ptr, "rb");
@@ -63,7 +78,7 @@ fn apply_image_filter(buffer: []u8) !void {
     }
 }
 
-fn save_png(image_header: *spng.spng_ihdr, buffer: []u8, path: []u8) !void {
+fn save_png(image_header: *spng.spng_ihdr, buffer: []u8, path: []const u8) !void {
     const file_descriptor = c.fopen(path.ptr, "wb");
     if (file_descriptor == null) {
         return error.CouldNotOpenFile;

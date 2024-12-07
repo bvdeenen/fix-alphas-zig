@@ -1,0 +1,15 @@
+{
+    "version": "0.1.0",
+    "configurations" : [
+        {
+            "type": "codelldb",
+            "request": "launch",
+            "name": "Launch CPP",
+            "program": "./zig-out/bin/fixalphas",
+				"args": ["--out", "piet.png", "p1.png"],
+            "MIMode": "lldb",
+            "miDebuggerPath": "/usr/bin/lldb"
+        }
+    ]
+
+}

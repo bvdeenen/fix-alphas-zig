@@ -21,6 +21,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const clap = b.dependency("clap", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("clap", clap.module("clap"));
     exe.linkLibC();
     exe.linkSystemLibrary("spng");
 
